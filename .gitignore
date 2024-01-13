@@ -1,3 +1,8 @@
-.idea
-.venv
+# .gitignore
 
+# Ignore PyCharm files
+.idea/
+
+# Ignore PyCharm workspace.xml file
+*.iml
+workspace.xml

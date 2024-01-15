@@ -12,11 +12,19 @@ def stream_data():
     import json
     from kafka import KafkaProducer
     import time
-
-    res = fetch_data()
-
-    producer = KafkaProducer(bootstrap_servers=['localhost:9092'], max_block_ms=5000)
-    producer.send('user_created',)
+    import logging
+    producer = KafkaProducer(bootstrap_servers=['broker:29092'], max_block_ms=5000)
+    producer.send('user_created', 'diofjiodj')
+    cur_time = time.time()
+    while True:
+        if time.time() > cur_time + 60:
+            break
+        try:
+            res = fetch_data()
+            producer.send('user_created', json.dumps(res).encode('utf-8'))
+        except Exception as e:
+            logging.error(f'An error occurred: {e}')
+            continue
 
 
 def fetch_data():
@@ -44,11 +52,9 @@ def format_data(res):
     return data
 
 
-# with DAG('user_automation', default_args=default_args, schedule_interval='@daily', catchup=False) as dag:
-#     streaming_task = PythonOperator(
-#         task_id='streaming_data_from_api',
-#         python_callable=stream_data
-#     )
+with DAG('user_automation', default_args=default_args, schedule_interval='@daily', catchup=False) as dag:
+    streaming_task = PythonOperator(
+        task_id='streaming_data_from_api',
+        python_callable=stream_data
+    )
 
-
-stream_data()

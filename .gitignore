@@ -6,3 +6,5 @@
 # Ignore PyCharm workspace.xml file
 *.iml
 workspace.xml
+/.venv/
+/.env

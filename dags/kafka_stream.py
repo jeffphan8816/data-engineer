@@ -13,8 +13,8 @@ def stream_data():
     from kafka import KafkaProducer
     import time
     import logging
-    producer = KafkaProducer(bootstrap_servers=['broker:29092'], max_block_ms=5000)
-    producer.send('user_created', 'diofjiodj')
+    producer = KafkaProducer(
+        bootstrap_servers=['broker:29092'], max_block_ms=5000)
     cur_time = time.time()
     while True:
         if time.time() > cur_time + 60:
@@ -57,4 +57,3 @@ with DAG('user_automation', default_args=default_args, schedule_interval='@daily
         task_id='streaming_data_from_api',
         python_callable=stream_data
     )
-

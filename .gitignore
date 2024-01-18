@@ -12,3 +12,6 @@ workspace.xml
 logs
 ./.vscode
 */__pycache__/
+.vscode/settings.json
+cs
+.prettierrc

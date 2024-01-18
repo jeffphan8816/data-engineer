@@ -1,20 +1,18 @@
 version: '3.8'
 
-x-airflow-common:
-  &airflow-common
+x-airflow-common: &airflow-common
   # In order to add custom dependencies or upgrade provider packages you can use your extended image.
   # Comment the image line, place your Dockerfile in the directory where you placed the docker-compose.yaml
   # and uncomment the "build" line below, Then run `docker-compose build` to build the images.
-#  image: ${AIRFLOW_IMAGE_NAME:-apache/airflow:2.7.0-python3.11}
+  #  image: ${AIRFLOW_IMAGE_NAME:-apache/airflow:2.7.0-python3.11}
   build: .
-  environment:
-    &airflow-common-env
+  environment: &airflow-common-env
     AIRFLOW__CORE__EXECUTOR: SequentialExecutor
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
     # For backward compatibility, with Airflow <2.3
     AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
-#    AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@postgres/airflow
-#    AIRFLOW__CELERY__BROKER_URL: redis://:@redis:6379/0
+    #    AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@postgres/airflow
+    #    AIRFLOW__CELERY__BROKER_URL: redis://:@redis:6379/0
     AIRFLOW__CORE__FERNET_KEY: ''
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
     AIRFLOW__CORE__LOAD_EXAMPLES: 'true'
@@ -30,16 +28,12 @@ x-airflow-common:
   volumes:
     - ./dags:/opt/airflow/dags
     - ./logs:/opt/airflow/logs
-#    - ./config:/opt/airflow/config
-#    - ./plugins:/opt/airflow/plugins
-  user: "${AIRFLOW_UID:-50000}:0"
-  depends_on:
-    &airflow-common-depends-on
+  #    - ./config:/opt/airflow/config
+  #    - ./plugins:/opt/airflow/plugins
+  user: '${AIRFLOW_UID:-50000}:0'
+  depends_on: &airflow-common-depends-on
     postgres:
       condition: service_healthy
-  networks:
-    - confluent
-
 
 services:
   zookeeper:
@@ -47,17 +41,16 @@ services:
     hostname: zookeeper
     container_name: zookeeper
     ports:
-      - "2181:2181"
+      - '2181:2181'
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
     healthcheck:
-      test: [ "CMD", "echo", "ruok", "|", "nc", "localhost", "2181" ]
+      test: ['CMD', 'bash', '-c', "echo 'ruok' | nc localhost 2181"]
       interval: 10s
       timeout: 5s
       retries: 5
-    networks:
-      - confluent
+
   broker:
     image: confluentinc/cp-server:7.4.0
     hostname: broker
@@ -66,8 +59,8 @@ services:
       zookeeper:
         condition: service_healthy
     ports:
-      - "9092:9092"
-      - "9101:9101"
+      - '9092:9092'
+      - '9101:9101'
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
@@ -88,12 +81,11 @@ services:
       CONFLUENT_METRICS_ENABLE: 'false'
       CONFLUENT_SUPPORT_CUSTOMER_ID: 'anonymous'
     healthcheck:
-      test: [ "CMD", "bash", "-c", 'nc -z localhost 9092' ]
+      test: ['CMD', 'bash', '-c', 'nc -z localhost 9092']
       interval: 10s
       timeout: 5s
       retries: 5
-    networks:
-      - confluent
+
   schema-registry:
     image: confluentinc/cp-schema-registry:7.4.0
     hostname: schema-registry
@@ -102,18 +94,16 @@ services:
       broker:
         condition: service_healthy
     ports:
-      - "8081:8081"
+      - '8081:8081'
     environment:
       SCHEMA_REGISTRY_HOST_NAME: schema-registry
       SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: 'broker:29092'
       SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8081/" ]
+      test: ['CMD', 'curl', '-f', 'http://localhost:8081/']
       interval: 30s
       timeout: 10s
       retries: 5
-    networks:
-      - confluent
   control-center:
     image: confluentinc/cp-enterprise-control-center:7.4.0
     hostname: control-center
@@ -124,10 +114,10 @@ services:
       schema-registry:
         condition: service_healthy
     ports:
-      - "9021:9021"
+      - '9021:9021'
     environment:
       CONTROL_CENTER_BOOTSTRAP_SERVERS: 'broker:29092'
-      CONTROL_CENTER_SCHEMA_REGISTRY_URL: "http://schema-registry:8081"
+      CONTROL_CENTER_SCHEMA_REGISTRY_URL: 'http://schema-registry:8081'
       CONTROL_CENTER_REPLICATION_FACTOR: 1
       CONTROL_CENTER_INTERNAL_TOPICS_PARTITIONS: 1
       CONTROL_CENTER_MONITORING_INTERCEPTOR_TOPIC_PARTITIONS: 1
@@ -135,12 +125,10 @@ services:
       CONFLIENT_METRICS_ENABLE: 'false'
       PORT: 9021
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:9021/health" ]
+      test: ['CMD', 'curl', '-f', 'http://localhost:9021/health']
       interval: 30s
       timeout: 10s
       retries: 5
-    networks:
-      - confluent
   postgres:
     image: postgres:14.0
     environment:
@@ -150,17 +138,15 @@ services:
     logging:
       options:
         max-size: 10m
-        max-file: "3"
+        max-file: '3'
     volumes:
       - postgres-db-volume:/var/lib/postgresql/data
     healthcheck:
-      test: [ "CMD", "pg_isready", "-U", "airflow" ]
+      test: ['CMD', 'pg_isready', '-U', 'airflow']
       interval: 10s
       retries: 5
       start_period: 5s
     restart: always
-    networks:
-      - confluent
 
   airflow-init:
     <<: *airflow-common
@@ -222,12 +208,9 @@ services:
       _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-airflow}
       _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-airflow}
       _PIP_ADDITIONAL_REQUIREMENTS: ''
-    user: "0:0"
+    user: '0:0'
     volumes:
       - ${AIRFLOW_PROJ_DIR:-.}:/sources
-
-    networks:
-      - confluent
 
   airflow-cli:
     <<: *airflow-common
@@ -235,27 +218,19 @@ services:
       - debug
     environment:
       <<: *airflow-common-env
-      CONNECTION_CHECK_MAX_COUNT: "0"
+      CONNECTION_CHECK_MAX_COUNT: '0'
     # Workaround for entrypoint issue. See: https://github.com/apache/airflow/issues/16252
     command:
       - bash
       - -c
       - airflow
-    networks:
-      - confluent
-#  airflow-server:
-#    <<: *airflow-common
-#    command: gunicorn -b 0.0.0.0:8050 /py_scripts.index:server
-#    ports:
-#      - '8050:8050'
-#    restart: always
   webserver:
     <<: *airflow-common
     command: webserver
     ports:
-      - "8080:8080"
+      - '8080:8080'
     healthcheck:
-      test: [ "CMD", "curl", "--fail", "http://localhost:8080/health" ]
+      test: ['CMD', 'curl', '--fail', 'http://localhost:8080/health']
       interval: 30s
       timeout: 10s
       retries: 5
@@ -265,12 +240,10 @@ services:
       <<: *airflow-common-depends-on
       airflow-init:
         condition: service_completed_successfully
-    networks:
-      - confluent
   scheduler:
     <<: *airflow-common
     healthcheck:
-      test: [ "CMD", "curl", "--fail", "http://localhost:8974/health" ]
+      test: ['CMD', 'curl', '--fail', 'http://localhost:8974/health']
       interval: 30s
       timeout: 10s
       retries: 5
@@ -286,46 +259,43 @@ services:
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
       - AIRFLOW_WEBSERVER_SECRET_KEY=this_is_a_very_secured_key
     command: bash -c "airflow db migrate && airflow scheduler"
-    networks:
-      - confluent
-
-#  spark-master:
-#    image: bitnami/spark:latest
-#    command: bin/spark-class org.apache.spark.deploy.master.Master
-#    ports:
-#      - "9090:8080"
-#      - "7077:7077"
-#    networks:
-#      - confluent
-#  spark-worker:
-#    image: bitnami/spark:latest
-#    command: bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
-#    depends_on:
-#      - spark-master
-#    environment:
-#      SPARK_MODE: worker
-#      SPARK_WORKER_CORES: 2
-#      SPARK_WORKER_MEMORY: 1g
-#      SPARK_MASTER_URL: spark://spark-master:7077
-#    networks:
-#      - confluent
-#
-#  cassandra_db:
-#    image: cassandra:latest
-#    container_name: cassandra
-#    hostname: cassandra
-#    ports:
-#      - "9042:9042"
-#    environment:
-#      - MAX_HEAP_SIZE=512M
-#      - HEAP_NEWSIZE=100M
-#      - CASSANDRA_USERNAME=cassandra
-#      - CASSANDRA_PASSWORD=cassandra
-#    networks:
-#      - confluent
-networks:
-  confluent:
-    external: true
+  spark-master:
+    image: bitnami/spark:latest
+    command: bin/spark-class org.apache.spark.deploy.master.Master
+    ports:
+      - '9090:8080'
+      - '7077:7077'
+  spark-worker:
+    image: bitnami/spark:latest
+    command: bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
+    depends_on:
+      - spark-master
+    environment:
+      SPARK_MODE: worker
+      SPARK_WORKER_CORES: 2
+      SPARK_WORKER_MEMORY: 1g
+      SPARK_MASTER_URL: spark://spark-master:7077
+  spark-worker2:
+    image: bitnami/spark:latest
+    command: bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
+    depends_on:
+      - spark-master
+    environment:
+      SPARK_MODE: worker
+      SPARK_WORKER_CORES: 2
+      SPARK_WORKER_MEMORY: 1g
+      SPARK_MASTER_URL: spark://spark-master:7077
+  cassandra_db:
+    image: cassandra:latest
+    container_name: cassandra
+    hostname: cassandra
+    ports:
+      - '9042:9042'
+    environment:
+      - MAX_HEAP_SIZE=512M
+      - HEAP_NEWSIZE=100M
+      - CASSANDRA_USERNAME=cassandra
+      - CASSANDRA_PASSWORD=cassandra
 
 volumes:
   postgres-db-volume:

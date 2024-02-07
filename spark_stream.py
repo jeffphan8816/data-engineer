@@ -4,8 +4,13 @@ from cassandra.cluster import Cluster
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import from_json, col
 from pyspark.sql.types import StructType, StructField, StringType
-
-
+import os
+os.environ['PYSPARK_SUBMIT_ARGS'] = ('--packages org.apache.spark:spark-streaming-kafka-0-10_2.12:3.5.0,'
+                                     'org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0,'
+                                     'com.datastax.spark:spark-cassandra-connector_2.12:3.4.1,'
+                                     'com.datastax.spark:spark-cassandra-connector-assembly_2.12:3.4.1,'
+                                     'org.apache.kafka:kafka-clients:3.6.1 pyspark-shell,'
+                                     '--conf spark.cassandra.connection.host=localhost pyspark-shell')
 def create_keyspace(session):
     session.execute("""
         CREATE KEYSPACE IF NOT EXISTS spark_streams
@@ -69,16 +74,16 @@ def create_spark_connection():
     try:
         s_conn = SparkSession.builder \
             .appName('SparkDataStreaming') \
-            .config('spark.jars.packages', "com.datastax.spark:spark-cassandra-connector_2.12:3.4.1,"
-                                           "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0") \
-            .config('spark.cassandra.connection.host', 'localhost') \
+            .config('spark.jars.packages', "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0,"
+                                           "com.datastax.spark:spark-cassandra-connector_2.12:3.4.1,"
+                                           "com.datastax.spark:spark-cassandra-connector-assembly_2.12:3.4.1,"
+                                           "org.apache.kafka:kafka-clients:3.6.1") \
             .getOrCreate()
 
         s_conn.sparkContext.setLogLevel("ERROR")
         logging.info("Spark connection created successfully!")
     except Exception as e:
-        logging.error(
-            f"Couldn't create the spark session due to exception {e}")
+        logging.error(f"Couldn't create the spark session due to exception {e}")
 
     return s_conn
 
@@ -89,7 +94,7 @@ def connect_to_kafka(spark_conn):
         spark_df = spark_conn.readStream \
             .format('kafka') \
             .option('kafka.bootstrap.servers', 'localhost:9092') \
-            .option('subscribe', 'users_created') \
+            .option('subscribe', 'user_created') \
             .option('startingOffsets', 'earliest') \
             .load()
         logging.info("kafka dataframe created successfully")

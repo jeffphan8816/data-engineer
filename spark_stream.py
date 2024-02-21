@@ -5,12 +5,16 @@ from pyspark.sql import SparkSession
 from pyspark.sql.functions import from_json, col
 from pyspark.sql.types import StructType, StructField, StringType
 import os
-os.environ['PYSPARK_SUBMIT_ARGS'] = ('--packages org.apache.spark:spark-streaming-kafka-0-10_2.12:3.5.0,'
-                                     'org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0,'
-                                     'com.datastax.spark:spark-cassandra-connector_2.12:3.4.1,'
-                                     'com.datastax.spark:spark-cassandra-connector-assembly_2.12:3.4.1,'
-                                     'org.apache.kafka:kafka-clients:3.6.1 pyspark-shell,'
-                                     '--conf spark.cassandra.connection.host=localhost pyspark-shell')
+
+
+# os.environ['PYSPARK_SUBMIT_ARGS'] = ('--packages org.apache.spark:spark-streaming-kafka-0-10_2.12:3.5.0,'
+#                                      'org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0,'
+#                                      'com.datastax.spark:spark-cassandra-connector_2.12:3.4.1,'
+#                                      'com.datastax.spark:spark-cassandra-connector-assembly_2.12:3.4.1,'
+#                                      'org.apache.kafka:kafka-clients:3.6.1 pyspark-shell,'
+#                                      '--conf spark.cassandra.connection.host=localhost pyspark-shell')
+
+
 def create_keyspace(session):
     session.execute("""
         CREATE KEYSPACE IF NOT EXISTS spark_streams
@@ -74,9 +78,9 @@ def create_spark_connection():
     try:
         s_conn = SparkSession.builder \
             .appName('SparkDataStreaming') \
+            .master('local') \
             .config('spark.jars.packages', "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0,"
                                            "com.datastax.spark:spark-cassandra-connector_2.12:3.4.1,"
-                                           "com.datastax.spark:spark-cassandra-connector-assembly_2.12:3.4.1,"
                                            "org.apache.kafka:kafka-clients:3.6.1") \
             .getOrCreate()
 
@@ -157,8 +161,9 @@ if __name__ == "__main__":
 
             streaming_query = (selection_df.writeStream.format("org.apache.spark.sql.cassandra")
                                .option('checkpointLocation', '/tmp/checkpoint')
-                               .option('keyspace', 'spark_streams')
-                               .option('table', 'created_users')
+                               .options(keyspace='spark_streams', table='created_users')
                                .start())
 
             streaming_query.awaitTermination()
+        else:
+            logging.error("Could not create a session to cassandra")

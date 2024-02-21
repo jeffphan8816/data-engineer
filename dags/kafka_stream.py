@@ -1,6 +1,7 @@
 from datetime import datetime
 from airflow import DAG
 from airflow.operators.python import PythonOperator
+import uuid
 
 default_args = {
     'owner': 'Jeff Phan',
@@ -38,17 +39,20 @@ def fetch_data():
 
 def format_data(res):
     data = {}
+    data['id'] = str(uuid.uuid4())
     location = res['location']
     data['first_name'] = res['name']['first']
     data['last_name'] = res['name']['last']
+    data['username'] = res['login']['username']
     data['email'] = res['email']
     data['gender'] = res['gender']
+    data['post_code'] = location['postcode']
     data['address'] = f"{location['street']['number']} {location['street']['name']}, {location['city']}, " \
                       f"{location['state']} {location['postcode']}, {location['country']}"
     data['dob'] = res['dob']['date']
     data['phone'] = res['phone']
     data['picture'] = res['picture']['medium']
-    data['registered_on'] = res['registered']['date']
+    data['registered_date'] = res['registered']['date']
     return data
 
 

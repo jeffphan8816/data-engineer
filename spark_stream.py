@@ -32,6 +32,7 @@ def create_table(session):
         last_name TEXT,
         gender TEXT,
         address TEXT,
+        dob TEXT,
         post_code TEXT,
         email TEXT,
         username TEXT,
@@ -80,6 +81,7 @@ def create_spark_connection():
             .appName('SparkDataStreaming') \
             .master('local') \
             .config('spark.jars.packages', "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0,"
+                                           "org.apache.spark:spark-streaming-kafka-0-10_2.12:3.5.0,"
                                            "com.datastax.spark:spark-cassandra-connector_2.12:3.4.1,"
                                            "org.apache.kafka:kafka-clients:3.6.1") \
             .getOrCreate()
@@ -100,6 +102,7 @@ def connect_to_kafka(spark_conn):
             .option('kafka.bootstrap.servers', 'localhost:9092') \
             .option('subscribe', 'user_created') \
             .option('startingOffsets', 'earliest') \
+            .option('failOnDataLoss', 'false') \
             .load()
         logging.info("kafka dataframe created successfully")
     except Exception as e:
@@ -129,6 +132,7 @@ def create_selection_df_from_kafka(spark_df):
         StructField("gender", StringType(), False),
         StructField("address", StringType(), False),
         StructField("post_code", StringType(), False),
+        StructField("dob", StringType(), False),
         StructField("email", StringType(), False),
         StructField("username", StringType(), False),
         StructField("registered_date", StringType(), False),
